@@ -23,14 +23,9 @@ function callClaude(text: string): Promise<string> {
     `Text:\n${text}`;
 
   return new Promise((resolve, reject) => {
-    const isRoot = process.getuid ? process.getuid() === 0 : false;
-
-    const command = isRoot ? "runuser" : "claude";
-    const args    = isRoot
-      ? ["-u", "botuser", "--", "claude", "--print", "--dangerously-skip-permissions", "--model", MODEL]
-      : ["--print", "--dangerously-skip-permissions", "--model", MODEL];
-
-    const env = isRoot ? { ...process.env, HOME: "/home/botuser" } : process.env;
+    const command = "claude";
+    const args    = ["--print", "--dangerously-skip-permissions", "--model", MODEL];
+    const env     = process.env;
 
     const proc = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
