@@ -1,0 +1,16 @@
+services:
+  translate-api-2:
+    container_name: translate-api-2
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    env_file:
+      - .env
+    build:
+      context: ./repo
+      dockerfile: Dockerfile
+    volumes:
+      - /root/.codex:/root/.codex:ro
