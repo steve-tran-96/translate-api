@@ -3,7 +3,7 @@ FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
 ENTRYPOINT ["/bin/bash", "-l", "-c"]
 WORKDIR /app/
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs
+RUN apt-get update && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs python3 make g++
 ENV PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
 
 

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import http from "node:http";
-import { spawn, execSync } from "node:child_process";
+import { execSync } from "node:child_process";
+import * as pty from "node-pty";
 
 const PORT   = parseInt(process.env.PORT   || "3099");
 const SECRET = process.env.SECRET          || "";
@@ -31,7 +32,7 @@ console.log(`   Codex  : ${CODEX_BIN}`);
 // ── Codex CLI ─────────────────────────────────────────────────────────────────
 
 function stripAnsi(str: string): string {
-  return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
+  return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "").replace(/\r/g, "");
 }
 
 function callCodex(text: string): Promise<string> {
@@ -44,39 +45,31 @@ function callCodex(text: string): Promise<string> {
     `Text:\n${text}`;
 
   return new Promise((resolve, reject) => {
-    const command = CODEX_BIN;
-    const args    = ["-a", "never", "--model", MODEL, prompt];
-
-    const proc = spawn(command, args, {
-      stdio: ["pipe", "pipe", "pipe"],
-      env: process.env,
+    const ptyProc = pty.spawn(CODEX_BIN, ["-a", "never", "--model", MODEL, prompt], {
+      name: "xterm-color",
+      cols: 220,
+      rows: 50,
+      cwd: "/tmp",
+      env: process.env as Record<string, string>,
     });
 
-    proc.stdin.end();
+    let output = "";
 
-    let stdout = "";
-    let stderr = "";
-
-    proc.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
-    proc.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+    ptyProc.onData((data: string) => { output += data; });
 
     const timer = setTimeout(() => {
-      proc.kill("SIGTERM");
-      reject(new Error("Claude CLI timeout (60s)"));
+      ptyProc.kill();
+      reject(new Error("Codex CLI timeout (60s)"));
     }, TIMEOUT_MS);
 
-    proc.on("close", (code: number | null) => {
+    ptyProc.onExit(({ exitCode }) => {
       clearTimeout(timer);
-      if (code !== 0) {
-        reject(new Error(stripAnsi(stderr).trim() || `Codex exited with code ${code}`));
+      const cleaned = stripAnsi(output).trim();
+      if (exitCode !== 0) {
+        reject(new Error(cleaned || `Codex exited with code ${exitCode}`));
         return;
       }
-      resolve(stripAnsi(stdout).trim());
-    });
-
-    proc.on("error", (err: Error) => {
-      clearTimeout(timer);
-      reject(new Error(`Cannot run codex CLI: ${err.message}`));
+      resolve(cleaned);
     });
   });
 }
@@ -163,7 +156,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`✅ translate-api đang chạy tại http://localhost:${PORT}`);
-  console.log(`   Engine : Codex CLI`);
+  console.log(`   Engine : Codex CLI (node-pty)`);
   console.log(`   Model  : ${MODEL}`);
   console.log(`   Secret : ${SECRET ? "✓ configured" : "⚠️  KHÔNG có secret (ai cũng gọi được!)"}`);
   console.log(`\n   Test:`);
