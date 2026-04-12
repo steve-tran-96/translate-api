@@ -4,16 +4,16 @@ import { spawn } from "node:child_process";
 
 const PORT   = parseInt(process.env.PORT   || "3099");
 const SECRET = process.env.SECRET          || "";
-const MODEL  = process.env.CLAUDE_MODEL    || "claude-sonnet-4-6";
+const MODEL  = process.env.CODEX_MODEL     || "o4-mini";
 const TIMEOUT_MS = 60_000;
 
-// ── Claude CLI ────────────────────────────────────────────────────────────────
+// ── Codex CLI ─────────────────────────────────────────────────────────────────
 
 function stripAnsi(str: string): string {
   return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
 }
 
-function callClaude(text: string): Promise<string> {
+function callCodex(text: string): Promise<string> {
   const prompt =
     `Translate the following text to natural Vietnamese.\n` +
     `Rules:\n` +
@@ -23,16 +23,14 @@ function callClaude(text: string): Promise<string> {
     `Text:\n${text}`;
 
   return new Promise((resolve, reject) => {
-    const command = "claude";
-    const args    = ["--print", "--dangerously-skip-permissions", "--model", MODEL];
-    const env     = process.env;
+    const command = "codex";
+    const args    = ["-a", "full-auto", "-q", "--model", MODEL, prompt];
 
     const proc = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
-      env,
+      env: process.env,
     });
 
-    proc.stdin.write(prompt, "utf-8");
     proc.stdin.end();
 
     let stdout = "";
@@ -49,7 +47,7 @@ function callClaude(text: string): Promise<string> {
     proc.on("close", (code: number | null) => {
       clearTimeout(timer);
       if (code !== 0) {
-        reject(new Error(stripAnsi(stderr).trim() || `Claude exited with code ${code}`));
+        reject(new Error(stripAnsi(stderr).trim() || `Codex exited with code ${code}`));
         return;
       }
       resolve(stripAnsi(stdout).trim());
@@ -57,7 +55,7 @@ function callClaude(text: string): Promise<string> {
 
     proc.on("error", (err: Error) => {
       clearTimeout(timer);
-      reject(new Error(`Cannot run claude CLI: ${err.message}`));
+      reject(new Error(`Cannot run codex CLI: ${err.message}`));
     });
   });
 }
@@ -93,12 +91,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Claude ping — public, no auth, verifies Claude CLI is alive
+  // Codex ping — public, no auth, verifies Codex CLI is alive
   if (req.method === "GET" && req.url === "/ping") {
     const t0 = Date.now();
     try {
-      const reply = await callClaude('Reply with exactly one word: pong');
-      json(res, 200, { status: "ok", claude: reply, ms: Date.now() - t0, model: MODEL });
+      const reply = await callCodex('Reply with exactly one word: pong');
+      json(res, 200, { status: "ok", codex: reply, ms: Date.now() - t0, model: MODEL });
     } catch (err: any) {
       json(res, 500, { status: "error", error: err.message, ms: Date.now() - t0 });
     }
@@ -133,7 +131,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const translated = await callClaude(text);
+      const translated = await callCodex(text);
       json(res, 200, { translated });
     } catch (err: any) {
       console.error("[translate-api] Error:", err.message);
@@ -144,6 +142,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`✅ translate-api đang chạy tại http://localhost:${PORT}`);
+  console.log(`   Engine : Codex CLI`);
   console.log(`   Model  : ${MODEL}`);
   console.log(`   Secret : ${SECRET ? "✓ configured" : "⚠️  KHÔNG có secret (ai cũng gọi được!)"}`);
   console.log(`\n   Test:`);

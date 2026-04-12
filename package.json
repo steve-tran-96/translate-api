@@ -1,7 +1,7 @@
 {
   "name": "translate-api",
   "version": "1.0.0",
-  "description": "Translation API using Claude CLI subscription",
+  "description": "Translation API using Codex CLI",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
