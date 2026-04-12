@@ -13,4 +13,4 @@ services:
       context: ./repo
       dockerfile: Dockerfile
     volumes:
-      - /root/.codex:/root/.codex:ro
+      - /root/.codex:/root/.codex
