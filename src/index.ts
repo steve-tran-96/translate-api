@@ -8,13 +8,25 @@ const MODEL  = process.env.CODEX_MODEL     || "o4-mini";
 const TIMEOUT_MS = 60_000;
 
 // Resolve full path to codex binary at startup (avoids ENOENT when PATH differs)
-let CODEX_BIN = "codex";
-try {
-  CODEX_BIN = execSync("which codex", { encoding: "utf-8" }).trim();
-  console.log(`   Codex  : ${CODEX_BIN}`);
-} catch {
-  console.warn("⚠️  codex binary not found in PATH — install with: npm install -g @openai/codex");
+const COMMON_PATHS = [
+  "/usr/local/bin/codex",
+  "/usr/bin/codex",
+  `${process.env.HOME}/.npm-global/bin/codex`,
+  `${process.env.HOME}/.local/bin/codex`,
+  "/root/.npm-global/bin/codex",
+];
+
+let CODEX_BIN = process.env.CODEX_PATH || "";
+if (!CODEX_BIN) {
+  try {
+    CODEX_BIN = execSync("which codex", { encoding: "utf-8" }).trim();
+  } catch {
+    CODEX_BIN = COMMON_PATHS.find(p => {
+      try { execSync(`test -x "${p}"`); return true; } catch { return false; }
+    }) || "codex";
+  }
 }
+console.log(`   Codex  : ${CODEX_BIN}`);
 
 // ── Codex CLI ─────────────────────────────────────────────────────────────────
 
