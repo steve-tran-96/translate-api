@@ -1,11 +1,20 @@
 import "dotenv/config";
 import http from "node:http";
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 
 const PORT   = parseInt(process.env.PORT   || "3099");
 const SECRET = process.env.SECRET          || "";
 const MODEL  = process.env.CODEX_MODEL     || "o4-mini";
 const TIMEOUT_MS = 60_000;
+
+// Resolve full path to codex binary at startup (avoids ENOENT when PATH differs)
+let CODEX_BIN = "codex";
+try {
+  CODEX_BIN = execSync("which codex", { encoding: "utf-8" }).trim();
+  console.log(`   Codex  : ${CODEX_BIN}`);
+} catch {
+  console.warn("⚠️  codex binary not found in PATH — install with: npm install -g @openai/codex");
+}
 
 // ── Codex CLI ─────────────────────────────────────────────────────────────────
 
@@ -23,7 +32,7 @@ function callCodex(text: string): Promise<string> {
     `Text:\n${text}`;
 
   return new Promise((resolve, reject) => {
-    const command = "codex";
+    const command = CODEX_BIN;
     const args    = ["-a", "full-auto", "-q", "--model", MODEL, prompt];
 
     const proc = spawn(command, args, {
