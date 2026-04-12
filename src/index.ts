@@ -55,15 +55,20 @@ function callCodex(text: string): Promise<string> {
 
     let output = "";
 
-    ptyProc.onData((data: string) => { output += data; });
+    ptyProc.onData((data: string) => {
+      output += data;
+      process.stdout.write("[codex] " + data); // debug log
+    });
 
     const timer = setTimeout(() => {
       ptyProc.kill();
+      console.error("[codex] timeout — last output:", stripAnsi(output).slice(-300));
       reject(new Error("Codex CLI timeout (60s)"));
     }, TIMEOUT_MS);
 
     ptyProc.onExit(({ exitCode }) => {
       clearTimeout(timer);
+      console.log(`[codex] exit code: ${exitCode}`);
       const cleaned = stripAnsi(output).trim();
       if (exitCode !== 0) {
         reject(new Error(cleaned || `Codex exited with code ${exitCode}`));
@@ -107,6 +112,7 @@ const server = http.createServer(async (req, res) => {
 
   // Codex ping — public, no auth, verifies Codex CLI is alive
   if (req.method === "GET" && req.url === "/ping") {
+    console.log("[ping] request received");
     const t0 = Date.now();
     try {
       const reply = await callCodex('Reply with exactly one word: pong');
