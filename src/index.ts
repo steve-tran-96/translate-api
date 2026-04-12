@@ -45,7 +45,7 @@ function callCodex(text: string): Promise<string> {
 
   return new Promise((resolve, reject) => {
     const command = CODEX_BIN;
-    const args    = ["-a", "full-auto", "--model", MODEL, prompt];
+    const args    = ["-a", "never", "--model", MODEL, prompt];
 
     const proc = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
